@@ -264,6 +264,9 @@ type OLAPRepository interface {
 	PayloadStore() PayloadStoreRepository
 
 	ListWorkflowRunExternalIds(ctx context.Context, tenantId string, opts ListWorkflowRunOpts) ([]pgtype.UUID, error)
+
+	CountOLAPStatusUpdatesTempTableSize(ctx context.Context) (int64, error)
+	ListYesterdayRunCountsByStatus(ctx context.Context) (map[sqlcv1.V1ReadableStatusOlap]int64, error)
 }
 
 type OLAPRepositoryImpl struct {
@@ -2615,4 +2618,24 @@ func (r *OLAPRepositoryImpl) populateTaskRunData(ctx context.Context, tx pgx.Tx,
 
 	return result, nil
 
+}
+
+func (r *OLAPRepositoryImpl) CountOLAPStatusUpdatesTempTableSize(ctx context.Context) (int64, error) {
+	return r.queries.CountOLAPStatusUpdatesTempTableSize(ctx, r.readPool)
+}
+
+func (r *OLAPRepositoryImpl) ListYesterdayRunCountsByStatus(ctx context.Context) (map[sqlcv1.V1ReadableStatusOlap]int64, error) {
+	rows, err := r.queries.ListYesterdayRunCountsByStatus(ctx, r.readPool)
+
+	if err != nil {
+		return nil, err
+	}
+
+	statusToCount := make(map[sqlcv1.V1ReadableStatusOlap]int64)
+
+	for _, row := range rows {
+		statusToCount[row.ReadableStatus] = row.Count
+	}
+
+	return statusToCount, nil
 }
